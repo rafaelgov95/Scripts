@@ -1,0 +1,27 @@
+#######################################
+# SCRIPT BACKUP SEMANAL SERVIDOR DADOS #
+#######################################
+
+# DEFINE AS VARIÁVEIS QUE SERÃO UTILIZADAS
+DATA=`date +%d-%m-%Y-%H.%M`
+
+# MONTA O PONTO DE MONTAGEM /BACKUP
+mount /dev/sdc1 /backup
+montado=`mount | grep /backup`
+
+# SE A MONTAGEM NÃO ESTIVER UP ENTÃO FECHA, CASO CONTRÁRIO REALIZA O BACKUP
+if [ -z "$montado" ]; then
+    exit 1
+else
+
+#rm -rf /backup/"$DIA"/*.tar.gz
+
+# COMPACTA TODO O CONTEÚDO 
+tar -zcvf /backup/geral-"$DATA".tar.gz /home/rafael/Arduino/
+
+# DESMONTA O PONTO DE MONTAGEM /BACKUP
+umount /backup
+#umount /dev/sdc1
+fi
+
+# FIM DAS INSTRUÇÕES
