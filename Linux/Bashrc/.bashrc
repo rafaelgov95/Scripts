@@ -1,11 +1,11 @@
 # *********************************************
-# * ~/.bashrc Personalizado para Ubuntu       *
-# * System: Ubuntu 12.04 – Precise Pangolin   *
+# * ~/.bashrc Personalizado para Debian 9 Dell 7460  *
+# * System: Debian-9    *
 # * local: /home/user/.bashrc                 *
 # *                                           *
-# * Author: Thiago Nalli Valentim             *
+# * Author: Rafael Viana             *
 # * E-Mail: rafaelgov95@gmail.com            *
-# * Date: 2016-02-16                          *
+# * Date: 2017-07-16                          *
 # *********************************************
 # ======================================================================
 # Adaptado do original de Edinaldo P. Silva para Arch Linux
@@ -134,3 +134,18 @@ alias dpkgrepair='sudo dpkg --configure -a'
 alias gitup='git add . ; git commit -m "Update" ; git push origin master' # Update git 
 alias google='ping -t 3 www.google.com.br' # Ping ao google a cada 3 segundos
 alias uol='ping -t 3 www.uol.com.br' # Ping ao UOL a cada 3 segundos
+alias gitup='git add . ; git commit -m "up" ; git push'
+alias setmonitor1='optirun xrandr --setprovideroutputsource 1 0'
+alias setmonitor2='optirun xrandr --setprovideroutputsource 2 0'
+alias bumblebee-config='optirun -b none /usr/bin/nvidia-settings  -c :8'
+
+export ORACLE_HOME=/u01/app/oracle/product/11.2.0/xe
+export ORACLE_SID=XE
+export NLS_LANG=`$ORACLE_HOME/bin/nls_lang.sh`
+export ORACLE_BASE=/u01/app/oracle
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+export PATH=$ORACLE_HOME/bin:$PATH
+
+export NVM_DIR="/home/rafael/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
+export PATH="$PATH:$HOME/.globus-cli-virtualenv/bin"
