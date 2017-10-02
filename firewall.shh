@@ -1,0 +1,328 @@
+
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          firewall.sh
+# Required-Start:    $local_fs $remote_fs $network $syslog
+# Required-Stop:     $local_fs $remote_fs $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start firewall.sh at boot time
+# Description:       Enable service provided by firewall.sh.
+### END INIT INFO
+
+#Shell Script - Firewall
+#========================
+
+#######################################
+# FIREWALL #
+#######################################
+
+#IP da rede Interna
+NETWORK=10.10.143.0/24
+
+#Interface da rede local - LAN
+#ILAN=eth1
+
+#Interface da rede Externa - Internet
+INET=eth1
+
+#Interface da VPN
+IVPN=tun0
+
+IPT=/sbin/iptables
+
+/sbin/modprobe iptable_filter
+/sbin/modprobe iptable_nat
+/sbin/modprobe iptable_mangle
+/sbin/modprobe ipt_LOG
+/sbin/modprobe ipt_REDIRECT
+/sbin/modprobe ipt_MASQUERADE
+
+INTERNET ()
+{
+#Mascaramento
+iptables -A INPUT -p tcp --dport 4222:4222 -j ACCEPT
+iptables -t filter -A FORWARD -i $IVPN -j ACCEPT
+iptables -t filter -A INPUT -i $IVPN -j ACCEPT
+#iptables -t nat -A POSTROUTING -o $INET -s $NETWORK -j MASQUERADE
+#iptables -t nat -A POSTROUTING -o $IVPN -s $NETWORK -j MASQUERADE
+#iptables -t nat -A POSTROUTING -d 177.6.215.146 -s 10.8.0.0/24 -j ACCEPT
+#iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth1 -j MASQUERADE
+iptables -A FORWARD -d 10.10.143.0/24 -j ACCEPT
+iptables -t nat -s 10.8.0.0/24 -A POSTROUTING -o $INET -j MASQUERADE
+iptables -t nat -A POSTROUTING -d 10.10.143.1 -s 10.8.0.0/24 -j ACCEPT
+
+iptables -A FORWARD -d 177.6.215.0/24 -j ACCEPT
+iptables -t nat -s 10.8.0.0/24 -A POSTROUTING -o $INET -j MASQUERADE
+iptables -t nat -A POSTROUTING -d 177.6.215.146 -s 10.8.0.0/24 -j ACCEPT
+
+#iptables -t filter -A FORWARD -i $IVPN -j ACCEPT
+#iptables -t filter -A INPUT -i $IVPN -j ACCEPT
+
+#iptables -A FORWARD -s $INET -o $IVPN -j ACCEPT
+#iptables -A FORWARD -d $INET -i $IVPN -j ACCEPT
+#iptables -t nat -s $INET -A POSTROUTING -o $IVPN -j MASQUERADE
+#iptables -t nat -s $IVPN -A POSTROUTING -o $INET -j MASQUERADE
+
+#Ativando redirecionamento de pacotes
+echo 1 > /proc/sys/net/ipv4/ip_forward
+}
+
+LIMPAR ()
+{
+#Removendo Regras
+iptables -F
+iptables -t nat -F
+iptables -t mangle -F
+
+#Apagando chains
+iptables -X
+iptables -t nat -X
+iptables -t mangle -X
+
+#Zerando controladores
+iptables -Z
+iptables -t nat -Z
+iptables -t mangle -Z
+}
+PARAR ()
+{
+#Limpando Regras
+LIMPAR
+
+#Politica Padrão
+iptables -P INPUT ACCEPT
+iptables -P OUTPUT ACCEPT
+iptables -P FORWARD ACCEPT
+
+#Compatyilando a Internet
+INTERNET
+}
+
+INICIAR ()
+{
+#Limpando regras
+LIMPAR
+
+#Politica Padrao
+iptables -P INPUT DROP
+iptables -P OUTPUT ACCEPT
+iptables -P FORWARD DROP
+
+#Compatilhando a Internet
+INTERNET
+
+
+#######################################
+# ATRIBUINDO SEGURANCA #
+#######################################
+
+#Protecao contra SYN Flood
+echo 1 > /proc/sys/net/ipv4/tcp_syncookies
+
+#Rejeitar requizicao de ICMP Echo destinado a Broadcast e Multicasts
+echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+
+#Ignorar mensagens falsas de icmp_error_responses
+echo 1 > /proc/sys/net/ipv4/icmp_ignore_bogus_error_responses
+
+for i in /proc/sys/net/ipv4/conf/*; do
+# NÃ£o Redirecionar Mensagens ICMP
+echo 0 > $i/accept_redirects
+
+#Protecao contra ataques de IP Spoofing
+echo 0 > $i/accept_source_route
+
+#Permitir que pacotes Forjados sejam logados pelo proprio kernel
+echo 1 > $i/log_martians
+
+#Verificar endereco de Origem do Pacote ( Protecao a ataques IP Spoofing)
+echo 1 > $i/rp_filter
+
+done
+
+#######################################
+# REGRAS DO SERVIDOR #
+#######################################
+
+#Apache - Servidor Web
+#iptables -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT
+
+#Apache TomCat - Servidor Web
+#iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+
+#Bind9 - Servidor DNS
+iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+
+#DanGuardian - Servidor Proxy
+#iptables -A INPUT -i $ILAN -p tcp --dport 8080 -j ACCEPT
+
+#DHCP - Servidor DHCP
+#iptables -A INPUT -i $ILAN -p udp --sport 68 --dport 67 -j ACCEPT
+
+#NFS - Servidor NFS
+iptables -A INPUT -p tcp -m multiport --dports 111,2049,51049 -j ACCEPT
+iptables -A INPUT -p udp -m multiport --dports 111,49176 -j ACCEPT
+
+#ProFTP - Servidor FTP
+#iptables -A INPUT -i $ILAN -p tcp --dport 21 -j ACCEPT
+#iptables -A INPUT -i $ILAN -p tcp -m multiport --dports 49152:49162 -j ACCEPT
+
+#PostFix - Servidor de E-mail
+#iptables -A INPUT -i $ILAN -p tcp -m multiport --dports 25,110 -j ACCEPT
+#iptables -A INPUT -i $ILAN -p tcp -m multiport --dports 465,995 -j ACCEPT
+
+#Squid - Servidor Proxy
+##iptables -A INPUT -i $ILAN -p tcp --dport 3128 -j ACCEPT
+
+#SSH - Servidor SSH (Acessar servodor SSH Interno, conexÃµes de fora e dentro da rede)
+iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 300 --hitcount 5 -j DROP
+iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --set
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+
+#VNC - Servidor de Acesso Remoto
+#iptables -A INPUT -p tcp --dport 4899 -j ACCEPT
+
+#VPN - OpenVpn
+iptables -t filter -A INPUT -p udp --dport 4222 -j ACCEPT
+iptables -t filter -A INPUT -p udp --sport 4222 -j ACCEPT
+
+#PING
+#iptables -A INPUT -i $ILAN -p icmp --icmp-type 8 -j ACCEPT
+
+#Webmin - Gerenciador de Web de Servidor
+#iptables -A INPUT -i $ILAN -p tcp --dport 1000 -j ACCEPT
+
+#SAMBA - Servidor de Diretorios Microsoft
+iptables -A INPUT -i $INET -p tcp -m multiport --dport 445,139 -j ACCEPT
+iptables -A INPUT -i $INET -p udp -m multiport --dport 137,138 -j ACCEPT
+iptables -A INPUT -i $IVPN -p tcp -m multiport --dport 445,139 -j ACCEPT
+iptables -A INPUT -i $IVPN -p udp -m multiport --dport 137,138 -j ACCEPT
+
+#######################################
+# REGRAS PARA SERVICOS #
+#######################################
+
+#HTTPS Seguro - Bloqueio de Sites HTTPS
+#iptables -I FORWARD -m string --algo bm --string "facebook.com" -j DROP
+#iptables -I FORWARD -m string --algo bm --string "twitter.com" -j DROP
+#iptables -I FORWARD -m string --algo bm --string "orkut.com" -j DROP
+
+#DNS - Servico de Nomes de Dominios
+#iptables -A FORWARD -o $INET -p udp -m multiport --dports 53,5353 -j ACCEPT
+
+#HTTPS - Protocolo de Tranferencia de Hypertext Seguro
+#iptables -A FORWARD -o $INET -p tcp --dport 443 -j ACCEPT
+
+#MSNMS - Servico de Mensageiro de Rede da Microsoft
+#iptables -A FORWARD -o $INET -p tcp -m multiport --dports 1863,7001 -j ACCEPT
+#iptables -A FORWARD -o $INET -p udp --dport 7001 -j ACCEPT
+
+#NTP - Protocolo para sincronizacao dos relogios
+iptables -A FORWARD -o $INET -p udp --dport 123 -j ACCEPT
+
+#Ping
+#iptables -A FORWARD -o $INET -p icmp --icmp-type 8 -j ACCEPT
+
+#POP3 - Protocolo de Correio
+#iptables -A FORWARD -o $INET -p tcp --dport 110 -j ACCEPT
+
+#POP3S - Protocolo de Correio Seguro
+#iptables -A FORWARD -o $INET -p tcp --dport 995 -j ACCEPT
+
+#RDP - Protocolo de Area de Trabalho Remota
+#iptables -A FORWARD -o $INET -p tcp --dport 3389 -j ACCEPT
+
+#SSDP - Protocolo para Descoberta de Servicos Simples
+#iptables -A INPUT -i $ILAN -p udp --dport 1900 -j ACCEPT
+
+#SSH - Shell Seguro (Acessar servidor SSH externo, fora da rede local)
+iptables -A FORWARD -o $INET -p tcp --dport 22 -j ACCEPT
+
+#SMTP - Protocolo Simples para Transferencia de Correio
+
+iptables -A FORWARD -o $INET -p tcp --dport 587 -j ACCEPT
+
+#SSMTP - Protocolo Simples para Transferencia de Correio Seguro
+#iptables -A FORWARD -o $INET -p tcp --dport 465 -j ACCEPT
+
+#Radmin - Computacao em Rede Virtual
+#iptables -A FORWARD -o $ILAN -p tcp --dport 4899 -j ACCEPT
+#iptables -A FORWARD -o $INET -p tcp --dport 4899 -j ACCEPT
+
+#Liberando o Trafego entre as VPN's
+#iptables -t filter -A FORWARD -i $IVPN -j ACCEPT
+#iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o $INET -j MASQUERADE
+#iptables -A FORWARD -d 10.10.143.0/24 -j ACCEPT
+#iptables -t nat -s 10.8.0.0/24 -A POSTROUTING -o $INET -j MASQUERADE
+
+#iptables -A FORWARD -d 177.6.215.0/24 -j ACCEPT
+#route add -net 10.10.143.0 netmask 255.255.255.0 dev $INET 
+#route add -net 10.10.143.0 netmask 255.255.255.0 dev $IVPN 
+
+#iptables -A FORWARD -d 192.168.250.0/24 -j ACCEPT
+#iptables -A FORWARD -d 192.168.210.0/24 -j ACCEPT
+
+#NFE - Conexao NFE
+#iptables -A FORWARD -o $INET -p tcp --dport 7778 -j ACCEPT
+
+#MixFiscal
+#iptables -A FORWARD -p tcp --dport 1521 -j ACCEPT
+
+#Manter Conexoes Estabelecidas
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+#Liberando o Trafego na Interface loopback
+iptables -A INPUT -i lo -j ACCEPT
+
+#######################################
+# REDIRECIONAMENTOS #
+#######################################
+
+#Acesso remoto via TS para um Host Windows
+#iptables -t nat -A PREROUTING -i $INET -p tcp --dport 3389 -j DNAT --to-destination 10.10.143.130
+
+#Acesso via Radmin
+#iptables -t nat -A PREROUTING -i $INET -p tcp --dport 4899 -j DNAT --to-destination 192.168.210.210:4899
+#iptables -t nat -A PREROUTING -i $INET -p tcp --dport 6000 -j DNAT --to-destination 192.168.210.149:4899
+
+#Acesso Arius/MixFiscal
+#iptables -t nat -A PREROUTING -i $INET -p tcp --dport 1521 -j DNAT --to-destination 192.168.210.253:1521
+
+#Proxy Transparente
+#iptables -t nat -A PREROUTING -i $ILAN -p tcp --dport 80 -j REDIRECT --to-port 3128
+
+#Acesso ao Arius Web
+#iptables -t nat -A PREROUTING -i $INET -p tcp --dport 8080 -j DNAT --to-destination 192.168.210.253
+
+#######################################
+# LOG #
+#######################################
+
+iptables -A INPUT -p tcp -m multiport ! --dports 0:9999 -j DROP
+#iptables -A INPUT -p udp -j DROP
+#iptables -A INPUT -p icmp -j DROP
+#iptables -A INPUT -m limit --limit 3/m --limit-burst 3 -j LOG --log-prefix "LOG-FW: "
+}
+
+case "$1" in
+start)
+echo " * Starting Firewall iptables"
+INICIAR
+;;
+stop)
+echo " * Stopping Firewall iptables"
+PARAR
+;;
+restart|reload)
+echo " * Reloading Firewall iptables"
+INICIAR
+;;
+*)
+echo " * Usage: $0 {start|stop|restart|reload}"
+exit 1
+esac
+
+exit 0
