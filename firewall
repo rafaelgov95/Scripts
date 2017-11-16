@@ -1,0 +1,194 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          firewall.sh
+# Required-Start:    $local_fs $remote_fs $network $syslog
+# Required-Stop:     $local_fs $remote_fs $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start firewall.sh at boot time
+# Description:       Enable service provided by firewall.sh.
+### END INIT INFO
+
+#Shell Script - Firewall
+#========================
+
+#######################################
+# FIREWALL #
+#######################################
+
+#Interface da rede Externa - Internet
+INET=eth1
+
+IPT=/sbin/iptables
+
+/sbin/modprobe iptable_filter
+/sbin/modprobe iptable_nat
+/sbin/modprobe iptable_mangle
+/sbin/modprobe ipt_LOG
+/sbin/modprobe ipt_REDIRECT
+/sbin/modprobe ipt_MASQUERADE
+
+INTERNET ()
+{
+
+
+#Ativando redirecionamento de pacotes
+echo 1 > /proc/sys/net/ipv4/ip_forward
+}
+
+LIMPAR ()
+{
+
+#Removendo Regras
+iptables -F
+iptables -t nat -F
+iptables -t mangle -F
+
+#Apagando chains
+iptables -X
+iptables -t nat -X
+iptables -t mangle -X
+
+#Zerando controladores
+iptables -Z
+iptables -t nat -Z
+iptables -t mangle -Z
+}
+PARAR ()
+{
+#Limpando Regras
+LIMPAR
+
+#Politica Padrão
+iptables -P INPUT ACCEPT
+iptables -P OUTPUT ACCEPT
+iptables -P FORWARD ACCEPT
+
+#Compatyilando a Internet
+INTERNET
+}
+
+INICIAR ()
+{
+#Limpando regras
+LIMPAR
+
+#Politica Padrao
+iptables -P INPUT DROP
+iptables -P OUTPUT ACCEPT
+iptables -P FORWARD DROP
+
+#Compatilhando a Internet
+INTERNET
+
+
+#######################################
+# ATRIBUINDO SEGURANCA #
+#######################################
+
+#Protecao contra SYN Flood
+echo 1 > /proc/sys/net/ipv4/tcp_syncookies
+
+#Rejeitar requizicao de ICMP Echo destinado a Broadcast e Multicasts
+echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+
+#Ignorar mensagens falsas de icmp_error_responses
+echo 1 > /proc/sys/net/ipv4/icmp_ignore_bogus_error_responses
+
+for i in /proc/sys/net/ipv4/conf/*; do
+# NÃ£o Redirecionar Mensagens ICMP
+echo 0 > $i/accept_redirects
+
+#Protecao contra ataques de IP Spoofing
+echo 0 > $i/accept_source_route
+
+#Permitir que pacotes Forjados sejam logados pelo proprio kernel
+echo 1 > $i/log_martians
+
+#Verificar endereco de Origem do Pacote ( Protecao a ataques IP Spoofing)
+echo 1 > $i/rp_filter
+
+done
+
+#######################################
+# REGRAS DO SERVIDOR #
+#######################################
+
+#SSH - Servidor SSH (Acessar servodor SSH Interno, conexÃµes de fora e dentro da rede)
+iptables -A INPUT -p tcp --dport 5522 -m state --state NEW -m recent --update --seconds 300 --hitcount 5 -j DROP
+iptables -A INPUT -p tcp --dport 5522 -m state --state NEW -m recent --set
+iptables -A INPUT -p tcp --dport 5522 -j ACCEPT
+
+#Apache - Servidor Web
+iptables -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT
+
+#Apache TomCat - Servidor Web
+iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+#iptables -A INPUT -p tcp --dport 8443 -j ACCEPT
+#Express
+iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
+iptables -A INPUT -p tcp --dport 3001 -j ACCEPT
+
+#Mysql
+iptables -A INPUT -p tcp --dport 3306 -j ACCEPT
+
+
+#######################################
+# REGRAS PARA SERVICOS #
+#######################################
+
+#SSH - Shell Seguro (Acessar servidor SSH externo, fora da rede local)
+iptables -A FORWARD -o $INET -p tcp --dport 5522 -j ACCEPT
+
+#Mysql
+iptables -A FORWARD -o $INET -p tcp --dport 3306 -j ACCEPT
+
+#HTTPS - Protocolo de Tranferencia de Hypertext Seguro
+#iptables -A FORWARD -o $INET -p tcp --dport 443 -j ACCEPT
+
+#HTTP
+#iptables -A FORWARD -o $INET -p tcp -m multiport --dports 1863,7001 -j ACCEPT
+
+iptables -t nat -I PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 3000
+#iptables -t nat -I PREROUTING -p tcp --dport 443 -j REDIRECT --to-ports 8443
+iptables -t nat -I PREROUTING -p tcp --dport 443 -j REDIRECT --to-ports 3001
+
+
+#Manter Conexoes Estabelecidas
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+#Liberando o Trafego na Interface loopback
+iptables -A INPUT -i lo -j ACCEPT
+
+#######################################
+# REDIRECIONAMENTOS #
+#######################################
+
+
+#######################################
+# LOG #
+#######################################
+iptables -A INPUT -p tcp -m multiport ! --dports 0:9999 -j DROP
+}
+
+case "$1" in
+start)
+echo " * Starting Firewall iptables"
+INICIAR
+;;
+stop)
+echo " * Stopping Firewall iptables"
+PARAR
+;;
+restart|reload)
+echo " * Reloading Firewall iptables"
+INICIAR
+;;
+*)
+echo " * Usage: $0 {start|stop|restart|reload}"
+exit 1
+esac
+
+exit 0

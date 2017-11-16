@@ -1,0 +1,63 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          webpage.sh
+# Required-Start:    $local_fs $remote_fs $network $syslog
+# Required-Stop:     $local_fs $remote_fs $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start webpage.sh at boot time
+# Description:       Enable service provided by webpage.sh.
+### END INIT INFO
+
+#Shell Script - WebPage
+#========================
+
+NAME=Estagio-UFMS
+SOUREC_DIR=/var/www/Estagio-UFMS-Coxim/back-end/bin/
+COMMAND=nodemon
+SOURCE_NAME=www
+USER=rafael
+NODE_ENVIROMENT=production
+pidfile=/var/run/$NAME.pid
+logfile=/var/log/$NAME.log
+forever=forever
+
+PARAR ()
+{
+    echo -n "Shutting down $NAME node instance : "
+    sudo -H -u $USER $forever stop 0
+}
+
+INICIAR ()
+{
+    export NODE_ENV=$NODE_ENVIROMENT
+    echo "Starting $NAME node instance : "
+    touch $logfile
+    chown $USER $logfile
+    touch $pidfile
+    chown $USER $pidfile
+    sudo -H -u $USER $forever start --pidFile $pidfile -l $logfile -a --sourceDir $SOUREC_DIR -c $COMMAND $SOURCE_NAME
+
+}
+
+case "$1" in
+start)
+echo " * Starting WebPage iptables"
+INICIAR
+;;
+stop)
+echo " * Stopping WebPage iptables"
+PARAR
+;;
+restart|reload)
+echo " * Reloading WebPage iptables"
+PARAR
+INICIAR
+;;
+*)
+echo " * Usage: $0 {start|stop|restart|reload}"
+exit 1
+esac
+
+exit 0
