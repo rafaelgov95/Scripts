@@ -1,6 +1,6 @@
 # *********************************************
-# * ~/.bashrc Personalizado para Debian 9 Dell 7460  *
-# * System: Debian-9    *
+# * ~/.bashrc Personalizado para Arch-Linux Dell 7460 *
+# * System: Arch-Linux    *
 # * local: /home/user/.bashrc                 *
 # *                                           *
 # * Author: Rafael Viana             *
@@ -79,7 +79,7 @@ else
  
 ## Cores e efeitos do usuário comum
  
- PS1="$BR┌─[$BG\u$BR]$BY@$BR[$BW${HOSTNAME%%.*}$BR]$R:\w\n$BR└──>$BG \\$ $NONE"
+PS1="$BR┌─[$BG\u$BR]$BY@$BR[$BW${HOSTNAME%%.*}$BR]$R:\w\n$BR└──>$BG \\$ $NONE"
 
 fi # Fim da condição if
  
@@ -102,50 +102,47 @@ fi # Fim da condição if
 ## Habilitando suporte a cores para o ls e outros aliases
 ## Vê se o arquivo existe
 if [ -x /usr/bin/dircolors ]; then
-test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
- 
-## Aliases (apelidos) para comandos
-alias ls='ls --color=auto'
-alias dir='dir --color=auto'
-alias grep='grep --color=auto'
-alias fgrep='fgrep --color=auto'
-alias egrep='egrep --color=auto'
+	test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+	#============================================== 
+	## Aliases (apelidos) para comandos
+	#==============================================
+	alias ls='ls --color=auto'
+	alias dir='dir --color=auto'
+	alias grep='grep --color=auto'
+	alias fgrep='fgrep --color=auto'
+	alias egrep='egrep --color=auto'
 fi # Fim do if do dircolor
- 
+
+#============================================== 
 ## Aliases (apelidos) diversos
+#=============================================
+
  
-# Editar sources.list
-alias lists='sudo vim /etc/apt/sources.list'
- 
-# atualizar o apt-get
-alias upd='sudo apt-get update'
- 
-# Reparar o apt-get
-alias aptrepair='sudo apt-get -f install'
- 
-# Reparar o dpkg
-alias dpkgrepair='sudo dpkg --configure -a'
- 
+alias upd='yay -Syyu'
+  
 #==============================================
 # Aliases para uso no dia-a-dia e testes
 #==============================================
  
 # Testar conexão com ping
-alias gitup='git add . ; git commit -m "Update" ; git push origin master' # Update git 
-alias google='ping -t 3 www.google.com.br' # Ping ao google a cada 3 segundos
-alias uol='ping -t 3 www.uol.com.br' # Ping ao UOL a cada 3 segundos
 alias gitup='git add . ; git commit -m "up" ; git push'
-alias setmonitor1='optirun xrandr --setprovideroutputsource 1 0'
-alias setmonitor2='optirun xrandr --setprovideroutputsource 2 0'
 alias bumblebee-config='optirun -b none /usr/bin/nvidia-settings  -c :8'
 
-export ORACLE_HOME=/u01/app/oracle/product/11.2.0/xe
-export ORACLE_SID=XE
-export NLS_LANG=`$ORACLE_HOME/bin/nls_lang.sh`
-export ORACLE_BASE=/u01/app/oracle
-export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
-export PATH=$ORACLE_HOME/bin:$PATH
 
-export NVM_DIR="/home/rafael/.nvm"
+alias apocalypse-lab-informatica='python2 /home/rafael/Documentos/TI/PSExec/PYTHON/desligar-lab-informatica.py'
+alias apocalypse-lab-linguas='python2 /home/rafael/Documentos/TI/PSExec/PYTHON/desligar-lab-linguas.py'
+
+alias reiniciar-lab-informatica='python2 /home/rafael/Documentos/TI/PSExec/PYTHON/reiniciar-lab-informatica.py'
+alias reiniciar-lab-linguas='python2 /home/rafael/Documentos/TI/PSExec/PYTHON/reiniciabbr-lab-linguas.py'
+ 
+alias ragnarock-lab-informatica='/home/rafael/Documentos/TI/PSExec/SH/ragnarok-lab-informatica.sh'
+alias ragnarock-lab-linguas='/home/rafael/Documentos/TI/PSExec/SH/ragnarok-lab-linguas.sh'
+
+#------------------
+# Export Variables
+#------------------
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/cuda/extras/CUPTI/lib64
+export NVM_DIR="/opt/nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
-export PATH="$PATH:$HOME/.globus-cli-virtualenv/bin"
+
+export PATH="${PATH}:/usr/local/sbin"
