@@ -5,7 +5,7 @@
 # *                                           *
 # * Author: Rafael Viana             *
 # * E-Mail: rafaelgov95@gmail.com            *
-# * Date: 2017-07-16                          *
+# * Date: 2019-10-28                          *
 # *********************************************
 # ======================================================================
 # Adaptado do original de Edinaldo P. Silva para Arch Linux
